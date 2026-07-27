@@ -172,7 +172,12 @@ public class WidgetManagerHelper {
     }
 
     private static Stream<AppWidgetProviderInfo> allWidgetsSteam(Context context) {
+        // BS-A16: AppWidget service may not be available on BlueStacks (no
+        // appwidget HAL). Guard against null to prevent crash-loop.
         AppWidgetManager awm = context.getSystemService(AppWidgetManager.class);
+        if (awm == null) {
+            return Stream.empty();
+        }
         return Stream.concat(
                 UserCache.INSTANCE.get(context)
                         .getUserProfiles()
