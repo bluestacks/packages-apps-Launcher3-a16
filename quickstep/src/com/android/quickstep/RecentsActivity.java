@@ -38,6 +38,7 @@ import android.animation.AnimatorSet;
 import android.app.ActivityOptions;
 import android.content.Intent;
 import android.os.Bundle;
+import com.bluestacks.os.BstHostCallManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Trace;
@@ -119,6 +120,8 @@ public final class RecentsActivity extends StatefulActivity<RecentsState> implem
     private OverviewActionsView<?> mActionsView;
     private TISBindHelper mTISBindHelper;
     private @Nullable TaskbarInteractor mTaskbarInteractor;
+    // BS-A16: Ported from A13. Host communication for recents activity.
+    private BstHostCallManager mBstHostCallManagerService;
 
     private StateManager<RecentsState, RecentsActivity> mStateManager;
 
@@ -382,6 +385,13 @@ public final class RecentsActivity extends StatefulActivity<RecentsState> implem
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setWallpaperDependentTheme(this);
+
+        // BS-A16: Ported from A13. Initialize BstHostCallManager for recents
+        // host communication (activity displayed notifications to host).
+        if (mBstHostCallManagerService == null) {
+            mBstHostCallManagerService = (com.bluestacks.os.BstHostCallManager)
+                    getBaseContext().getSystemService(android.content.Context.BST_HOST_CALL);
+        }
         mStateManager = new StateManager<>(this, RecentsState.BG_LAUNCHER);
 
         initDeviceProfile();

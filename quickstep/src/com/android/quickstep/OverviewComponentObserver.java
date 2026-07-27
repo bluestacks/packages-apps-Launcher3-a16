@@ -115,12 +115,17 @@ public final class OverviewComponentObserver {
         mCurrentPrimaryHomeIntent = createHomeIntent();
         mMyPrimaryHomeIntent = new Intent(mCurrentPrimaryHomeIntent).setPackage(
                 context.getPackageName());
+        // BS-A16: Ported from A13. Since HOME category was removed (7AF),
+        // resolveActivity returns null for mMyPrimaryHomeIntent -> NPE on
+        // info.activityInfo. Hardcode QuickstepLauncher component directly
+        // instead of resolving from the (now missing) HOME intent filter.
         ResolveInfo info = context.getPackageManager().resolveActivity(mMyPrimaryHomeIntent, 0);
-        ComponentName myHomeComponent =
-                new ComponentName(context.getPackageName(), info.activityInfo.name);
+        ComponentName myHomeComponent = new ComponentName(
+                "com.android.launcher3", "com.android.launcher3.uioverrides.QuickstepLauncher");
         mMyPrimaryHomeIntent.setComponent(myHomeComponent);
 
-        mConfigChangesMap.append(myHomeComponent.hashCode(), info.activityInfo.configChanges);
+        mConfigChangesMap.append(myHomeComponent.hashCode(),
+                info != null ? info.activityInfo.configChanges : 0);
         mSetupWizardPkg = context.getString(R.string.setup_wizard_pkg);
 
         ComponentName fallbackComponent = new ComponentName(context, RecentsActivity.class);
@@ -203,6 +208,16 @@ public final class OverviewComponentObserver {
         }
 
         mIsDefaultHome = Objects.equals(mMyPrimaryHomeIntent.getComponent(), defaultHome);
+
+        // BS-A16: Ported from A13. There is a probability that the defaultHome
+        // might be null during initial boot-up process. In this case, set the
+        // defaultHome to BlueStacks launcher to avoid the issue of the desktop
+        // being displayed as Launcher3.
+        if (defaultHome == null) {
+            mIsDefaultHome = false;
+            defaultHome = new ComponentName("com.bluestacks.launcher",
+                    "com.bluestacks.launcher.activity.HomeActivity");
+        }
 
         // Set assistant visibility to 0 from launcher's perspective, ensures any elements that
         // launcher made invisible become visible again before the new activity control helper
