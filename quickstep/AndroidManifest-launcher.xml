@@ -58,10 +58,12 @@
                 <action android:name="android.intent.action.MAIN" />
                 <action android:name="android.intent.action.SHOW_WORK_APPS" />
                 <action android:name="android.intent.action.ALL_APPS" />
-                <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
+                <!--
+                R257 / Henry BS-A16: remove HOME so com.uncube.launcher3 is sole home.
                 <category android:name="android.intent.category.LAUNCHER_APP" />
+                -->
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"

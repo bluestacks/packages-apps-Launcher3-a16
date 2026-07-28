@@ -115,12 +115,15 @@ public final class OverviewComponentObserver {
         mCurrentPrimaryHomeIntent = createHomeIntent();
         mMyPrimaryHomeIntent = new Intent(mCurrentPrimaryHomeIntent).setPackage(
                 context.getPackageName());
+        // R257 / Henry BS-A16 OverviewComponentObserver
+        // HOME category removed → resolveActivity may be null; hardcode QuickstepLauncher.
         ResolveInfo info = context.getPackageManager().resolveActivity(mMyPrimaryHomeIntent, 0);
-        ComponentName myHomeComponent =
-                new ComponentName(context.getPackageName(), info.activityInfo.name);
+        ComponentName myHomeComponent = new ComponentName(
+                "com.android.launcher3", "com.android.launcher3.uioverrides.QuickstepLauncher");
         mMyPrimaryHomeIntent.setComponent(myHomeComponent);
 
-        mConfigChangesMap.append(myHomeComponent.hashCode(), info.activityInfo.configChanges);
+        mConfigChangesMap.append(myHomeComponent.hashCode(),
+                info != null ? info.activityInfo.configChanges : 0);
         mSetupWizardPkg = context.getString(R.string.setup_wizard_pkg);
 
         ComponentName fallbackComponent = new ComponentName(context, RecentsActivity.class);
@@ -203,6 +206,13 @@ public final class OverviewComponentObserver {
         }
 
         mIsDefaultHome = Objects.equals(mMyPrimaryHomeIntent.getComponent(), defaultHome);
+
+        // R257 / Henry: if defaultHome null at boot, point at BlueStacks/uncube home.
+        if (defaultHome == null) {
+            mIsDefaultHome = false;
+            defaultHome = new ComponentName("com.uncube.launcher3",
+                    "com.bluestacks.launcher.activity.HomeActivity");
+        }
 
         // Set assistant visibility to 0 from launcher's perspective, ensures any elements that
         // launcher made invisible become visible again before the new activity control helper
