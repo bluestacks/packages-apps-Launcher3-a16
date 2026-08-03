@@ -64,6 +64,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemProperties;
 import android.os.Trace;
 import android.provider.Settings;
 import android.util.ArraySet;
@@ -959,6 +960,10 @@ public class TaskbarManagerImpl implements DisplayDecorationListener {
     }
 
     private boolean isTaskbarEnabled(int displayId, DeviceProfile deviceProfile) {
+        if (SystemProperties.getInt("bst.hide_taskbar", 0) <= 0) {
+            return false;
+        }
+
         boolean taskbarDisallowedByDisplayPolicy = (getSharedStateForDisplay(displayId)
                 .sysuiStateFlags & SYSUI_STATE_NAVIGATION_BAR_DISABLED) != 0;
         if (taskbarDisallowedByDisplayPolicy) {

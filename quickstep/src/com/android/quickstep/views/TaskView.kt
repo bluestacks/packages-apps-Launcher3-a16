@@ -118,6 +118,7 @@ import com.android.systemui.shared.recents.model.Task
 import com.android.systemui.shared.recents.model.ThumbnailData
 import com.android.systemui.shared.system.ActivityManagerWrapper
 import com.android.wm.shell.shared.split.SplitScreenConstants
+import com.bluestacks.os.BstHostCallManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
@@ -1464,6 +1465,9 @@ constructor(
     }
 
     private fun onClick() {
+        if (!isBstTaskLaunchAllowed()) {
+            return
+        }
         if (confirmSecondSplitSelectApp()) {
             return
         }
@@ -1472,6 +1476,19 @@ constructor(
             .logger()
             .withItemInfo(itemInfo)
             .log(LauncherEvent.LAUNCHER_TASK_LAUNCH_TAP)
+    }
+
+    private fun isBstTaskLaunchAllowed(): Boolean {
+        val packageName =
+            taskContainers.firstOrNull()?.task?.key?.component?.packageName ?: return true
+        val hostCallManager =
+            context.getSystemService(Context.BST_HOST_CALL) as? BstHostCallManager ?: return true
+        return try {
+            hostCallManager.isAppLaunchAllowed(packageName, true)
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Unable to query launch policy for $packageName", e)
+            true
+        }
     }
 
     /** Launch of the current task (both live and inactive tasks) with an animation. */

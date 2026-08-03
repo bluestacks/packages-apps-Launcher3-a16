@@ -27,6 +27,7 @@ import static com.android.launcher3.QuickstepTransitionManager.STATUS_BAR_TRANSI
 import static com.android.launcher3.QuickstepTransitionManager.STATUS_BAR_TRANSITION_PRE_DELAY;
 import static com.android.launcher3.testing.shared.TestProtocol.LAUNCHER_ACTIVITY_STOPPED_MESSAGE;
 import static com.android.launcher3.testing.shared.TestProtocol.OVERVIEW_STATE_ORDINAL;
+import static com.android.launcher3.util.Executors.UI_HELPER_EXECUTOR;
 import static com.android.launcher3.util.WallpaperThemeManager.setWallpaperDependentTheme;
 import static com.android.quickstep.OverviewComponentObserver.startHomeIntentSafely;
 import static com.android.quickstep.TaskUtils.taskIsATargetWithMode;
@@ -36,11 +37,14 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.AnimatorSet;
 import android.app.ActivityOptions;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemProperties;
 import android.os.Trace;
+import android.util.Log;
 import android.view.Display;
 import android.view.RemoteAnimationAdapter;
 import android.view.RemoteAnimationTarget;
@@ -92,6 +96,7 @@ import com.android.quickstep.views.RecentsViewContainer;
 import com.android.quickstep.views.TaskView;
 import com.android.wm.shell.shared.desktopmode.DesktopModeStatus;
 import com.android.wm.shell.shared.desktopmode.DesktopState;
+import com.bluestacks.os.BstHostCallManager;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -129,6 +134,8 @@ public final class RecentsActivity extends StatefulActivity<RecentsState> implem
     private SplitSelectStateController mSplitSelectStateController;
     @Nullable
     private DesktopRecentsTransitionController mDesktopRecentsTransitionController;
+    @Nullable private BstHostCallManager mBstHostCallManager;
+    private boolean mMouseActionResetPending;
 
     /**
      * Init drag layer and overview panel views.
@@ -383,6 +390,7 @@ public final class RecentsActivity extends StatefulActivity<RecentsState> implem
         super.onCreate(savedInstanceState);
         setWallpaperDependentTheme(this);
         mStateManager = new StateManager<>(this, RecentsState.BG_LAUNCHER);
+        mBstHostCallManager = (BstHostCallManager) getSystemService(Context.BST_HOST_CALL);
 
         initDeviceProfile();
         InvariantDeviceProfile.INSTANCE.get(this).addOnChangeListener(this);
@@ -429,7 +437,33 @@ public final class RecentsActivity extends StatefulActivity<RecentsState> implem
         if (state == RecentsState.DEFAULT) {
             AccessibilityManagerCompat.sendStateEventToTest(getBaseContext(),
                     OVERVIEW_STATE_ORDINAL);
+            resetBstMouseAction();
         }
+    }
+
+    private void resetBstMouseAction() {
+        BstHostCallManager hostCallManager = mBstHostCallManager;
+        String action = SystemProperties.get("bst.config.last_mouse_action", "");
+        if (mMouseActionResetPending || action.isEmpty() || hostCallManager == null) {
+            return;
+        }
+
+        mMouseActionResetPending = true;
+        UI_HELPER_EXECUTOR.execute(() -> {
+            try {
+                int result = hostCallManager.onSetMouseAction(
+                        "com.android.launcher3", RecentsActivity.class.getName(), "");
+                if (result == 0) {
+                    SystemProperties.set("bst.config.last_mouse_action", "");
+                } else {
+                    Log.e(TAG, "Failed to reset host mouse action: " + result);
+                }
+            } catch (RuntimeException e) {
+                Log.e(TAG, "Unable to reset host mouse action", e);
+            } finally {
+                mUiHandler.post(() -> mMouseActionResetPending = false);
+            }
+        });
     }
 
     @Override
