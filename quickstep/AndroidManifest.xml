@@ -80,13 +80,17 @@
             </intent-filter>
         </service>
 
+        <!-- BS-A16: recents should follow the user rotation lock: landscape when free
+             (matches the host window the shell notifies), portrait when the host sidebar
+             forced portrait (user_rotation locked). "behind" made recents follow a
+             background portrait game and rendered a rotated fb inside the host window. -->
         <activity android:name="com.android.quickstep.RecentsActivity"
              android:excludeFromRecents="true"
              android:launchMode="singleTask"
              android:clearTaskOnLaunch="true"
              android:stateNotNeeded="true"
              android:theme="@style/LauncherTheme"
-             android:screenOrientation="behind"
+             android:screenOrientation="user"
              android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
              android:resizeableActivity="true"
              android:resumeWhilePausing="true"
