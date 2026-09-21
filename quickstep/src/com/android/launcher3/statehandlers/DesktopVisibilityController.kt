@@ -156,6 +156,11 @@ constructor(
 
     /** Returns whether a desk is currently active on the display with the given [displayId]. */
     fun isInDesktopMode(displayId: Int): Boolean {
+        // BS-A16: while window mode is enabled, report an active desktop session so
+        // the desktop taskbar (icons + search) stays up with no freeform windows.
+        if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) == 1) {
+            return true
+        }
         if (!enableMultipleDesktops(context)) {
             return isInDesktopModeDeprecated
         }
@@ -173,6 +178,10 @@ constructor(
      * Overview is not active.
      */
     fun isInDesktopModeAndNotInOverview(displayId: Int): Boolean {
+        // BS-A16: same override as isInDesktopMode above.
+        if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) == 1) {
+            return true
+        }
         if (!enableMultipleDesktops(context)) {
             return areDesktopTasksVisibleAndNotInOverview(displayId)
         }

@@ -325,6 +325,11 @@ public class TaskbarActivityContext extends BaseTaskbarContext {
         TaskbarView taskbarView = mDragLayer.findViewById(R.id.taskbar_view);
         TaskbarScrimView taskbarScrimView = mDragLayer.findViewById(R.id.taskbar_scrim);
         NearestTouchFrame navButtonsView = mDragLayer.findViewById(R.id.navbuttons_view);
+        // BS-A16: hide the nav buttons while window mode is enabled; window
+        // management lives in the taskbar itself.
+        if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) > 0) {
+            navButtonsView.setVisibility(View.GONE);
+        }
         StashedHandleView stashedHandleView = mDragLayer.findViewById(R.id.stashed_handle);
         NudgeView nudgeView = mDragLayer.findViewById(R.id.nudge_icon);
         BubbleBarView bubbleBarView = mDragLayer.findViewById(R.id.taskbar_bubbles);
@@ -1659,7 +1664,48 @@ public class TaskbarActivityContext extends BaseTaskbarContext {
 
         mControllers.keyboardQuickSwitchController.closeQuickSwitchView(false);
 
+        // BS-A16: single-click launches normally go through the launcher model,
+        // which is dead while a 3P launcher is default. Launch directly into a
+        // freeform window instead when window mode is enabled.
+        if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) == 1
+                && tag instanceof com.android.launcher3.model.data.ItemInfo info) {
+            android.content.Intent base = info.getIntent();
+            if (base != null && base.getComponent() != null) {
+                try {
+                    android.content.Intent it = new android.content.Intent(base);
+                    it.setComponent(base.getComponent());
+                    it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    android.app.ActivityOptions opts = android.app.ActivityOptions.makeBasic();
+                    java.lang.reflect.Method setMode = android.app.ActivityOptions.class
+                            .getMethod("setLaunchWindowingMode", int.class);
+                    setMode.invoke(opts, 5); // WINDOWING_MODE_FREEFORM
+                    startActivity(it, opts.toBundle());
+                } catch (Exception e) {
+                    android.util.Log.e("Taskbar", "fallback freeform launch: " + e.getMessage());
+                }
+                return;
+            }
+        }
+
         if (tag instanceof SingleTask singleTask) {
+            // BS-A16: with window mode on but no live desk session the desktop
+            // launch machinery is a no-op; launch the task straight into a
+            // freeform window so taskbar taps always work.
+            if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) == 1) {
+                try {
+                    android.content.Intent it = new android.content.Intent();
+                    it.setComponent(singleTask.getTask().key.getComponent());
+                    it.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                    android.app.ActivityOptions opts = android.app.ActivityOptions.makeBasic();
+                    java.lang.reflect.Method setMode = android.app.ActivityOptions.class
+                            .getMethod("setLaunchWindowingMode", int.class);
+                    setMode.invoke(opts, 5); // WINDOWING_MODE_FREEFORM
+                    startActivity(it, opts.toBundle());
+                } catch (Exception e) {
+                    android.util.Log.e("Taskbar", "fallback freeform launch: " + e.getMessage());
+                }
+                return;
+            }
             RemoteTransition remoteTransition =
                     (isTaskbarShowingDesktopTasks() && canUnminimizeDesktopTask(
                             singleTask.getTask().key.id))

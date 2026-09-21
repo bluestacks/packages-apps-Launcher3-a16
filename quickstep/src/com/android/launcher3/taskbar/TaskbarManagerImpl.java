@@ -256,7 +256,11 @@ public class TaskbarManagerImpl implements DisplayDecorationListener {
                                 /* fromInit= */ false);
 
                         // Only Handles Special Exit Cases for Desktop Mode Taskbar Recreation.
-                        if (!taskbarActivityContext.showLockedTaskbarOnHome()
+                        // BS-A16: skip the recreate while window mode is enabled; the
+                        // taskbar is already in desktop flavor and recreating it on
+                        // every desk change causes a visible flash.
+                        if (android.os.SystemProperties.getInt("bst.freeform_launch", 0) == 0
+                                && !taskbarActivityContext.showLockedTaskbarOnHome()
                                 && !taskbarActivityContext.showDesktopTaskbarForFreeformDisplay()) {
                             int recreateDuration = taskbarActivityContext.getResources().getInteger(
                                     R.integer.to_desktop_animation_duration_ms);
@@ -961,6 +965,10 @@ public class TaskbarManagerImpl implements DisplayDecorationListener {
 
     private boolean isTaskbarEnabled(int displayId, DeviceProfile deviceProfile) {
         if (SystemProperties.getInt("bst.hide_taskbar", 0) <= 0) {
+            return false;
+        }
+        // BS-A16: the desktop taskbar exists only while window mode is enabled.
+        if (SystemProperties.getInt("bst.freeform_launch", 0) == 0) {
             return false;
         }
 

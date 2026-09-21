@@ -48,6 +48,7 @@ import android.animation.ValueAnimator;
 import android.app.RemoteAction;
 import android.graphics.drawable.Icon;
 import android.os.SystemClock;
+import android.os.SystemProperties;
 import android.util.Log;
 import android.view.InsetsController;
 import android.view.View;
@@ -302,9 +303,13 @@ public class TaskbarStashController implements TaskbarControllers.LoggableTaskba
                 return false;
             }
 
+            // BS-A16: while window mode is enabled the taskbar stays up everywhere,
+            // including on the launcher home.
+            boolean bstKeepUp = SystemProperties.getInt("bst.freeform_launch", 0) > 0;
             boolean inApp = hasAnyFlag(flags, FLAGS_IN_APP);
-            boolean stashedInApp = hasAnyFlag(flags, FLAGS_STASHED_IN_APP);
-            boolean stashedLauncherState = hasAnyFlag(flags, FLAG_IN_STASHED_LAUNCHER_STATE);
+            boolean stashedInApp = hasAnyFlag(flags, FLAGS_STASHED_IN_APP) && !bstKeepUp;
+            boolean stashedLauncherState =
+                    hasAnyFlag(flags, FLAG_IN_STASHED_LAUNCHER_STATE) && !bstKeepUp;
             boolean inOverview = hasAnyFlag(flags, FLAG_IN_OVERVIEW);
             boolean stashedInOverview = hasAnyFlag(flags, FLAGS_STASHED_IN_OVERVIEW);
             boolean forceStashed = hasAnyFlag(flags, FLAGS_FORCE_STASHED);
