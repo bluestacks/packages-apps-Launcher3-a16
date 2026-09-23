@@ -198,6 +198,9 @@ import com.android.quickstep.OverviewComponentObserver;
 import com.android.quickstep.OverviewComponentObserver.OverviewChangeListener;
 import com.android.quickstep.RecentsModel;
 import com.android.quickstep.SystemUiProxy;
+import com.android.wm.shell.shared.desktopmode.DesktopModeTransitionSource;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 import com.android.quickstep.TaskUtils;
 import com.android.quickstep.TouchInteractionService.TISBinder;
 import com.android.quickstep.fallback.RecentsState;
@@ -819,6 +822,43 @@ public class QuickstepLauncher extends Launcher implements RecentsViewContainer,
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // BS-A16: clear all desks when freeform mode is toggled (broadcast
+        // from BCP; same action as the recents "Clear All" button).
+        registerReceiver(new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context ctx, Intent intent) {
+                android.util.Log.d("QuickstepLauncher", "CLEAR_DESKS: start");
+                // Exact same sequence as the recents "Clear All" button
+                // (RecentsView.createAllTasksDismissAnimation):
+                try {
+                    // 1. Remove all desk roots (child tasks go fullscreen)
+                    SystemUiProxy.INSTANCE.get(ctx).removeAllDesks(
+                            DesktopModeTransitionSource.RECENTS);
+                    android.util.Log.d("QuickstepLauncher", "CLEAR_DESKS: desks removed");
+
+                    // 2. Remove all recent task records (same as Clear All's
+                    //    finishRecentsAnimation callback)
+                    ActivityManagerWrapper.getInstance().removeAllRecentTasks();
+                    android.util.Log.d("QuickstepLauncher", "CLEAR_DESKS: recent tasks removed");
+
+                    // 3. Remove each remaining task — this is what actually
+                    //    kills the processes (same as individual task dismiss)
+                    android.app.ActivityManager am =
+                            (android.app.ActivityManager) ctx.getSystemService(
+                                    Context.ACTIVITY_SERVICE);
+                    for (android.app.ActivityManager.AppTask appTask :
+                            am.getAppTasks()) {
+                        try {
+                            appTask.finishAndRemoveTask();
+                        } catch (Exception ignored) { }
+                    }
+                    android.util.Log.d("QuickstepLauncher", "CLEAR_DESKS: all tasks finished");
+                } catch (Exception e) {
+                    android.util.Log.e("QuickstepLauncher", "CLEAR_DESKS: " + e.getMessage());
+                }
+            }
+        }, new IntentFilter("com.bluestacks.action.CLEAR_DESKS"),
+                Context.RECEIVER_EXPORTED);
         super.onCreate(savedInstanceState);
         if (savedInstanceState != null) {
             mPendingSplitSelectInfo = ObjectWrapper.unwrap(
