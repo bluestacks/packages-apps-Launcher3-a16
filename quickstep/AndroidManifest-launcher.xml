@@ -60,7 +60,7 @@
                 <action android:name="android.intent.action.ALL_APPS" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
-                <category android:name="android.intent.category.HOME" />
+                <!-- A16: Recents stays in Quickstep; Polaris owns HOME. -->
                 <category android:name="android.intent.category.LAUNCHER_APP" />
             </intent-filter>
             <meta-data

@@ -207,11 +207,11 @@ public final class OverviewComponentObserver {
 
         mIsDefaultHome = Objects.equals(mMyPrimaryHomeIntent.getComponent(), defaultHome);
 
-        // R257 / Henry: if defaultHome null at boot, point at BlueStacks/uncube home.
+        // If HOME resolution is not ready during boot, use the product launcher component.
         if (defaultHome == null) {
             mIsDefaultHome = false;
-            defaultHome = new ComponentName("com.uncube.launcher3",
-                    "com.bluestacks.launcher.activity.HomeActivity");
+            defaultHome = new ComponentName("com.bluestacks.polaris",
+                    "com.bluestacks.polaris.MainActivity");
         }
 
         // Set assistant visibility to 0 from launcher's perspective, ensures any elements that
