@@ -67,7 +67,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <!--
-                R257 / Henry BS-A16: remove HOME so com.uncube.launcher3 is sole home.
+                A16: remove HOME so com.bluestacks.polaris is the sole home app.
                 <category android:name="android.intent.category.LAUNCHER_APP" />
                 -->
             </intent-filter>
