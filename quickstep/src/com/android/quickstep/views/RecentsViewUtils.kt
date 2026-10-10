@@ -457,12 +457,16 @@ class RecentsViewUtils(private val recentsView: RecentsView<*, *>) : DesktopVisi
                 return
             }
 
-            // We need to distinguish between desk removals that are triggered from outside of
-            // overview vs. the ones that were initiated from overview by dismissing the
-            // corresponding desktop task view.
-            getDesktopTaskViewForDeskId(deskId)?.let {
-                dismissTaskView(it, /* animateTaskView= */ true, /* removeTask= */ true)
+            // Desk removal started from overview already dismisses this card. A removal that
+            // arrives while overview is stopped came from the shell, for example the last
+            // window moving to fullscreen. Running the swipe-dismiss path in that case treats
+            // the desk card as the last task and calls startHome(), which covers the app that
+            // just became fullscreen.
+            val desktopTaskView = getDesktopTaskViewForDeskId(deskId) ?: return
+            if (!mContainer.isStarted() || desktopTaskView.isBeingDismissed) {
+                return
             }
+            dismissTaskView(desktopTaskView, /* animateTaskView= */ true, /* removeTask= */ true)
         }
     }
 
