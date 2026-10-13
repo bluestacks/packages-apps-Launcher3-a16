@@ -21,7 +21,9 @@ import android.content.Context
 import android.os.IBinder
 import android.util.Log
 import android.view.SurfaceControl.Transaction
+import android.view.WindowManager.TRANSIT_CLOSE
 import android.view.WindowManager.TRANSIT_OPEN
+import android.view.WindowManager.TRANSIT_TO_BACK
 import android.view.WindowManager.TRANSIT_TO_FRONT
 import android.window.IRemoteTransitionFinishedCallback
 import android.window.RemoteTransitionStub
@@ -82,9 +84,24 @@ constructor(
             transitionFinishedCallback.onTransitionFinished(/* wct= */ null, /* sct= */ null)
         }
         mainExecutor.execute {
-            getLaunchChange(info)?.let { launchChange ->
-                transaction.reparent(launchChange.leash, info.rootLeash)
+            val launchChange = getLaunchChange(info)
+            // POL-233: Play Store's singleInstance handoff is a second OPEN+CLOSE in the same
+            // rect. Skip the scale/fade and keep the opening leashes (including the desk) shown.
+            if (isPlayStore(launchChange)) {
+                // Show the new window and hide the one it replaces in the same transaction.
+                // A phone never reveals what is behind the app between those two frames.
+                info.changes.forEach { change ->
+                    when (change.mode) {
+                        TRANSIT_OPEN, TRANSIT_TO_FRONT ->
+                            transaction.show(change.leash).setAlpha(change.leash, 1f)
+                        TRANSIT_CLOSE, TRANSIT_TO_BACK -> transaction.hide(change.leash)
+                    }
+                }
+                transaction.apply()
+                RemoteRunnable.executeSafely(safeTransitionFinishedCallback)
+                return@execute
             }
+            launchChange?.let { transaction.reparent(it.leash, info.rootLeash) }
             transaction.apply()
             runAnimators(info, safeTransitionFinishedCallback)
         }
@@ -104,6 +121,11 @@ constructor(
             return
         }
         animators.forEach { it.start() }
+    }
+
+    private fun isPlayStore(change: TransitionInfo.Change?): Boolean {
+        val pkg = change?.taskInfo?.baseIntent?.component?.packageName
+        return pkg == "com.android.vending"
     }
 
     private fun getLaunchChange(info: TransitionInfo): TransitionInfo.Change? =
